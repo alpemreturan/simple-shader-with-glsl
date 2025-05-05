@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLSL RGB Daire</title>
+</head>
+<body>
+    <canvas id="glCanvas" width="500" height="500"></canvas>
+    <script>
+        const canvas = document.getElementById('glCanvas');
+        const gl = canvas.getContext('webgl');
+
+        if (!gl) {
+            alert('WebGL desteklenmiyor!');
+            throw new Error('WebGL desteklenmiyor!');
+        }
+
+        // Vertex Shader
+        const vertexShaderSource = `
+        attribute vec2 aPosition;
+        varying vec2 vPosition;
+
+        void main() {
+            vPosition = aPosition;
+            gl_Position = vec4(aPosition, 0.0, 1.0);
+        }
+        `;
+
+        // Fragment Shader
+        const fragmentShaderSource = `
+        precision mediump float;
+        varying vec2 vPosition;
+
+        void main() {
+            float dist = length(vPosition);
+            if (dist > 1.0) {
+                discard; // Daire dışında kalan alanı kes
+            }
+            gl_FragColor = vec4(vPosition.x + 0.5, vPosition.y + 0.5, 1.0 - dist, 1.0);
+        }
+        `;
+
+        // Shader oluşturma
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader derleme hatası:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        // Program oluşturma
+        function createProgram(gl, vertexShader, fragmentShader) {
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program linkleme hatası:', gl.getProgramInfoLog(program));
+                gl.deleteProgram(program);
+                return null;
+            }
+            return program;
+        }
+
+        // Shader'ları oluştur
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        // Programı oluştur
+        const program = createProgram(gl, vertexShader, fragmentShader);
+
+        // Konum verilerini tanımla
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        const positions = [
+            -1, -1,
+             1, -1,
+            -1,  1,
+             1,  1,
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+        // Programı kullan
+        gl.useProgram(program);
+
+        // Konumları bağla
+        const positionLocation = gl.getAttribLocation(program, 'aPosition');
+        gl.enableVertexAttribArray(positionLocation);
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+        // Çizim
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    </script>
+</body>
+</html>
